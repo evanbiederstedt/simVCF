@@ -26,23 +26,16 @@ Dependencies: (create requirements.txt)
 This should work:
 https://github.com/hammerlab/gtfparse
 
-
-#http://daler.github.io/gffutils/examples.html
-
-bcbio-gff
-#https://github.com/chapmanb/bcbb/tree/master/gff
-
 pre-process annotation files
 
->>> fname = "/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/gencode.v19.chr_patch_hapl_scaff.annotation.gtf"
->>> from gtfparse import read_gtf_as_dataframe
->>>
->>> df = read_gtf_as_dataframe(fname)
+    fname = ".../gencode.v19.chr_patch_hapl_scaff.annotation.gtf"
+    from gtfparse import read_gtf_as_dataframe
+    df = read_gtf_as_dataframe(fname)
 
->> df = df.gene_name.unique()  ### I think that's what I did ---- error if no `gene_name`
+    df = df.gene_name.unique() 
 
->>> foo = {"gene": ["BRCA2", "KRAS", "BRCA1", "TP53",], "variant_type": ["SNP", "SNP", "SNP", "SNP"], "number": [3, 4, 5, 1]  }
->>> df = pd.DataFrame(foo)
+    foo = {"gene": ["BRCA2", "KRAS", "BRCA1", "TP53",], "variant_type": ["SNP", "SNP", "SNP", "SNP"], "number": [3, 4, 5, 1]  }
+    df = pd.DataFrame(foo)
 
 
 gene  number variant_type
