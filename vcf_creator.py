@@ -4,6 +4,7 @@ import pandas as pd
 import pickle
 import random
 import datetime
+import argparse
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -13,11 +14,12 @@ annotation_file = pickle.load(open('../data/unique_genes_hg19.p', 'rb'))
 
 def retrieve_variant_positions(column):
     """Retrieve 'number' positions between 'start' and 'end' """
-    if int(column.start) <= abs(int(column.end + 1) - int(column.start)):
-        return np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    if int(column.number <= abs(int(column.end + 1) - int(column.start)):
+        choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
     else:
     	raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them.')
 
+    return choice
 
 def read_fasta(input_fasta):
     """ Read in human genome reference FASTA"""
@@ -62,9 +64,14 @@ def read_variant_inputs(variants_csv, annotation_file):
             variants['length'] = 1
         else:
     	    variants['length'].fillna(1, inplace=True)
-    ## assume only SNP for now	    
-    if 'length' in variants.columns:
-        variants['end'] = variants['position']
+    ## check for required `length` column for insertions and deletions
+    if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
+    	if 'length' not in variants:
+    		raise ValueError('Input variant *csv is formatted incorrectly. Mandatory `length` column must be included for INS and DEL. See README for formatting requirements.')
+    ## assume only SNP for now	
+    ## this appears unnecessary    
+    ## if 'length' in variants.columns:
+    ##    variants['end'] = variants['position']
     ### Adopt consistent name convention
     if 'gene' in variants.columns:
         variants = variants.rename(columns={'gene': 'gene_name'})   ## or re-write the annotation convention for 'gene' instead of 'gene_name'
@@ -79,7 +86,6 @@ def read_variant_inputs(variants_csv, annotation_file):
         match['new_variant_positions'] = match.apply(retrieve_variant_positions, axis=1)
         ## convert df to dictionary
         variants_dict = match.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
-
     else:
     	match = variants  ## if user didn't provide gene_names, the annotation isn't useful/needed
     	### must convert to variant dictionary
