@@ -13,7 +13,10 @@ annotation_file = pickle.load(open('../data/unique_genes_hg19.p', 'rb'))
 
 def retrieve_variant_positions(column):
     """Retrieve 'number' positions between 'start' and 'end' """
-    return np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    if int(column.start) <= abs(int(column.end + 1) - int(column.start)):
+        return np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    else:
+    	raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them.')
 
 
 def read_fasta(input_fasta):
