@@ -1,3 +1,5 @@
-0,BRCA2,3,SNP
-1,KRAS,4,SNP
-2,BRCA1,5,SNP
+gene,number,variant_type
+BRCA2,3,SNP
+KRAS,4,SNP
+BRCA1,5,SNP
+TP53,1,SNP

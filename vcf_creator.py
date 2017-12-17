@@ -7,10 +7,8 @@ import datetime
 from collections import defaultdict
 from Bio import SeqIO
 
-inputFASTA = "/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/UCSC/hg19_small.fa"
-inputVARIANTS = "/Users/ebiederstedt/Downloads/gene_muts.csv"
-outputVCF = "/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/myfile.VCF"
-annotation_file = pickle.load(open("/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/unique_genes_hg19.p", "rb" ))
+
+annotation_file = pickle.load(open('../data/unique_genes_hg19.p', 'rb'))
 
 
 def retrieve_variant_positions(column):
@@ -25,7 +23,7 @@ def read_fasta(input_fasta):
         genome[seq_record.id] = seq_record.upper().seq.tomutable()
     ## remove all 'useless' chromosomes, i.e. must match chrX, chrY or "^[a-z]{3}\d{1,2}$"
     genome = {k: v for k, v in genome.items() 
-                    if re.match('^[a-z]{3}\d{1,2}$', k, re.IGNORECASE) or k in ["chrX", "chrY", "chrx", "chry"] or k in ["X", "Y", "x", "y"]}  
+                    if re.match('^[a-z]{3}\d{1,2}$', k, re.IGNORECASE) or k in ['chrX', 'chrY', 'chrx', 'chry'] or k in ['X', 'Y', 'x', 'y']}  
     return genome
 
 
@@ -38,7 +36,7 @@ def get_reference_bases(my_list):
     return new_list[0]
 
 
-def read_variant_inputs(variants_csv):
+def read_variant_inputs(variants_csv, annotation_file):
     """ Read csv of variants for VCF, outputs dictionary of all positions.
         If only gene names provided, randomly draw N variants between gene_start and gene_end"""
     variants = pd.read_csv(variants_csv)
@@ -130,5 +128,29 @@ def write_vcf(ref_alt_dict, outputVCF):
         vcf.write(header)
 
     df.to_csv(outputVCF, sep='\t', mode='a', index=False)  ##  'a' appends to the end of the header above
+
+
+
+def main(args):
+    ## read in annotation of variants
+    vars = read_variant_inputs(args['input_variants'], annotation_file)
+    ref_alts = create_ref_alt_dict(vars, args['input_fasta'])
+    write_vcf(ref_alts, args['output_vcf'])
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Simulate VCF of somatic variants')
+    parser.add_argument('--input_fasta', 
+                        default='../data/subsampled_hg38.fa',
+                        help='file path for the input (default genome) fasta')
+    parser.add_argument('--input_variants',
+                        default='../data/somatic_variants.csv',
+                        help='file path for the input *csv of variants')
+    parser.add_argument('--output_vcf',
+                        default = 'outputs/somatic.VCF',
+                        help='file path for the output VCF of somatic variants')
+    args = vars(parser.parse_args())
+    main(args)
+
 
 
