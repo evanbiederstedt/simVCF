@@ -1,25 +1,22 @@
-
-
-
-from Bio import SeqIO
 import re
+import numpy as np
 import pandas as pd
 import pickle
-import numpy as np
 import random
-from collections import defaultdict
 import datetime
-
-inputFASTA = "/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/UCSC/hg19_small.fa"
-inputVARIANTS = "/Users/ebiederstedt/Downloads/gene_muts.csv"
-outputVCF = "/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/myfile.VCF"
-annotation_file = pickle.load(open("/Users/ebiederstedt/Desktop/GENCODE_hg19_reference_annotation/unique_genes_hg19.p", "rb" ))
+import argparse
+from collections import defaultdict
+from Bio import SeqIO
 
 
 def retrieve_variant_positions(column):
     """Retrieve 'number' positions between 'start' and 'end' """
-    return np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    if int(column.number <= abs(int(column.end + 1) - int(column.start)):
+        choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    else:
+        raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them.')
 
+    return choice
 
 def read_fasta(input_fasta):
     """ Read in human genome reference FASTA"""
@@ -28,7 +25,7 @@ def read_fasta(input_fasta):
         genome[seq_record.id] = seq_record.upper().seq.tomutable()
     ## remove all 'useless' chromosomes, i.e. must match chrX, chrY or "^[a-z]{3}\d{1,2}$"
     genome = {k: v for k, v in genome.items() 
-                    if re.match('^[a-z]{3}\d{1,2}$', k, re.IGNORECASE) or k in ["chrX", "chrY", "chrx", "chry"] or k in ["X", "Y", "x", "y"]}  
+                    if re.match('^[a-z]{3}\d{1,2}$', k, re.IGNORECASE) or k in ['chrX', 'chrY', 'chrx', 'chry'] or k in ['X', 'Y', 'x', 'y']}  
     return genome
 
 
@@ -41,7 +38,7 @@ def get_reference_bases(my_list):
     return new_list[0]
 
 
-def read_variant_inputs(variants_csv):
+def read_variant_inputs(variants_csv, annotation_file):
     """ Read csv of variants for VCF, outputs dictionary of all positions.
         If only gene names provided, randomly draw N variants between gene_start and gene_end"""
     variants = pd.read_csv(variants_csv)
@@ -64,9 +61,14 @@ def read_variant_inputs(variants_csv):
             variants['length'] = 1
         else:
     	    variants['length'].fillna(1, inplace=True)
-    ## assume only SNP for now	    
-    if 'length' in variants.columns:
-        variants['end'] = variants['position']
+    ## check for required `length` column for insertions and deletions
+    if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
+    	if 'length' not in variants:
+    		raise ValueError('Input variant *csv is formatted incorrectly. Mandatory `length` column must be included for INS and DEL. See README for formatting requirements.')
+    ## assume only SNP for now	
+    ## this appears unnecessary    
+    ## if 'length' in variants.columns:
+    ##    variants['end'] = variants['position']
     ### Adopt consistent name convention
     if 'gene' in variants.columns:
         variants = variants.rename(columns={'gene': 'gene_name'})   ## or re-write the annotation convention for 'gene' instead of 'gene_name'
@@ -81,7 +83,6 @@ def read_variant_inputs(variants_csv):
         match['new_variant_positions'] = match.apply(retrieve_variant_positions, axis=1)
         ## convert df to dictionary
         variants_dict = match.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
-
     else:
     	match = variants  ## if user didn't provide gene_names, the annotation isn't useful/needed
     	### must convert to variant dictionary
@@ -103,7 +104,7 @@ def create_ref_alt_dict(var_dict, reference):
     		d[key][position].append(ref)    ## make `position` the key, REF first, ALT second
             d[key][position].append(alt)
 
-    ## del sorted_dict
+    del sorted_dict
     return d
 
     
@@ -133,5 +134,39 @@ def write_vcf(ref_alt_dict, outputVCF):
         vcf.write(header)
 
     df.to_csv(outputVCF, sep='\t', mode='a', index=False)  ##  'a' appends to the end of the header above
+
+
+
+def main(args):
+    ## read in annotation of variants
+    if args['annotation']=='GENCODE':
+        annotation_gencode = pd.read_csv('../data/GENCODE_annotation_unique_gene_names.csv')
+        vars = read_variant_inputs(args['input_variants'], annotation_gencode)
+    elif args['annotation']=='Ensembl':
+        annotation_ensembl = pd.read_csv('../data/ENSEMBL_Homo_sapiens.GRCh37.75_unique_gene_names.csv')
+        vars = read_variant_inputs(args['input_variants'], annotation_ensembl)
+    else:
+        raise NotImplementedError('Only GENCODE and Ensembl annotations implemented.') 
+    ref_alts = create_ref_alt_dict(vars, args['input_fasta'])
+    write_vcf(ref_alts, args['output_vcf'])
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Simulate VCF of somatic variants')
+    parser.add_argument('-a','--annotation', 
+                        choices=['GENCODE', 'Ensembl']
+                        help='annotation flag corresonding to input_fasta')
+    parser.add_argument('-i','--input_fasta', 
+                        default='../data/subsampled_hg38.fa',
+                        help='file path for the input (default genome) fasta')
+    parser.add_argument('-v', '--input_variants',
+                        default='../data/somatic_variants.csv',
+                        help='file path for the input *csv of variants')
+    parser.add_argument('-o', '--output_vcf',
+                        default = 'outputs/somatic.VCF',
+                        help='file path for the output VCF of somatic variants')
+    args = vars(parser.parse_args())
+    main(args)
+
 
 
