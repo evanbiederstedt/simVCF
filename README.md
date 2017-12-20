@@ -35,6 +35,6 @@ optional arguments:
                         file path for the output VCF of somatic variants
 ```
 
-
+[![Build Status](https://travis-ci.org/evanbiederstedt/simVCF.png?branch=master)](https://travis-ci.org/evanbiederstedt/simVCF)
 
 

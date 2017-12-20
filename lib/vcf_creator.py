@@ -61,6 +61,9 @@ def read_variant_inputs(variants_csv, annotation_file):
             variants['length'] = 1
         else:
     	    variants['length'].fillna(1, inplace=True)
+    
+
+
     ## check for required `length` column for insertions and deletions
     if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
     	if 'length' not in variants:
@@ -154,7 +157,8 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simulate VCF of somatic variants')
     parser.add_argument('-a','--annotation', 
-                        choices=['GENCODE', 'Ensembl']
+                        choices=['GENCODE', 'Ensembl'], 
+                        type=str.lower,
                         help='annotation flag corresonding to input_fasta')
     parser.add_argument('-i','--input_fasta', 
                         default='../data/subsampled_hg38.fa',
