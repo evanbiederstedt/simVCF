@@ -5,6 +5,7 @@ import pickle
 import random
 import datetime
 import argparse
+import warnings
 from collections import defaultdict
 from Bio import SeqIO
 
@@ -55,14 +56,23 @@ def read_variant_inputs(variants_csv, annotation_file):
     	variants['variant_type'] = 'SNP'
     else:
     	variants['variant_type'].fillna('SNP', inplace=True)
+    ## check elements in "variant_type" are valid
+    if not set(['SNP', 'DEL', 'INS', 'DUP', 'INV', 'CNV', 'DUP:TANDEM', 'DEL:ME', 'INS:ME']).issubset(variants['variant_type']):
+        raise ValueError('Input variant *csv is formatted incorrectly. The "variant_type" column must contain correctly labeled variants. See README for formatting requirements.')
+    if set(['DEL:ME']).issubset(variants['variant_type']):
+        warnings.warn("Warning: DEL:ME denotes a deletion of mobile element relative to the reference. This needs to be implemented by the user.")
+    if set(['INS:ME']).issubset(variants['variant_type']):
+        warnings.warn("Warning: INS:ME denotes an insertion of mobile element relative to the reference. This needs to be implemented by the user.")
+
     ## if "position" exists, fill NA in "length" with 1
     if 'position' in variants.columns:
         if 'length' not in variants:   ## if "length" left empty, fill with 1 by default
             variants['length'] = 1
         else:
     	    variants['length'].fillna(1, inplace=True)
-    
 
+    if variants['position'].max() > 2.49e8:
+        raise ValueError('Input variant *csv is formatted incorrectly. Value in `position` column greater than 2.49e8 bp, longer than the largest chromosome in the human reference. See README for formatting requirements.')
 
     ## check for required `length` column for insertions and deletions
     if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
