@@ -19,6 +19,7 @@ def retrieve_variant_positions(column):
 
     return choice
 
+
 def read_fasta(input_fasta):
     """ Read in human genome reference FASTA"""
     genome = {}
@@ -77,12 +78,13 @@ def read_variant_inputs(variants_csv, annotation_file):
         raise ValueError('Input variant *csv is formatted incorrectly. Value in `position` column greater than 2.49e8 bp, longer than the largest chromosome in the human reference. See README for formatting requirements.')
 
     ## check for required `length` column for insertions and deletions
-    if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
+    if set(['DEL', 'INS', 'DUP', 'INV', 'CNV', 'DUP:TANDEM', 'DEL:ME', 'INS:ME']).issubset(variants['variant_type']):
     	if 'length' not in variants:
-    		raise ValueError('Input variant *csv is formatted incorrectly. Mandatory `length` column must be included for INS and DEL. See README for formatting requirements.')
-  
-    ## if 'length' in variants.columns:
-    ##    variants['end'] = variants['position']
+    		variants['length'] = 1
+        else:
+            variants['length'].fillna(1, inplace=True)
+    ## end = position if variant == SNP, else end = start + length
+    variants['end'] = np.where(variants['variant_type']=='SNP', df['position'], df['start']+df['length'])
 
     ### Adopt consistent name convention
     if 'gene' in variants.columns:
@@ -123,7 +125,6 @@ def create_ref_alt_dict(var_dict, reference):
     return d
 
     
-
 def write_vcf(ref_alt_dict, outputVCF):
     """Write VCF from dictionary of positions/REF/variants"""
     df = pd.DataFrame.from_records([[i, j] + ref_alt_dict[i][j] for i in ref_alt_dict for j in ref_alt_dict[i]])
@@ -149,6 +150,7 @@ def write_vcf(ref_alt_dict, outputVCF):
         vcf.write(header)
 
     df.to_csv(outputVCF, sep='\t', mode='a', index=False)  ##  'a' appends to the end of the header above
+
 
 def set_random_seed(seed_number):
     """Set numpy.random.seed for reproducible variant placements"""
