@@ -150,9 +150,19 @@ def write_vcf(ref_alt_dict, outputVCF):
 
     df.to_csv(outputVCF, sep='\t', mode='a', index=False)  ##  'a' appends to the end of the header above
 
+def set_random_seed(seed_number):
+    """Set numpy.random.seed for reproducible variant placements"""
+    try:
+        seed_input = int(seed_number)
+    except:
+        raise TypeError("Input must be a number!")
+    return np.random.seed(seed=seed_input)
 
 
 def main(args):
+    ## check if seed set
+    if args['seed'] is not None:
+        set_random_seed(args['seed'])
     ## read in annotation of variants
     if args['reference']=='hg19' or args['reference']=='GRCh37':
         if args['annotation']=='GENCODE':
@@ -199,6 +209,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--output_vcf',
                         default = 'outputs/somatic.VCF',
                         help='file path for the output VCF of somatic variants')
+    parser.add_argument('-s', '--seed',
+                        help='set seed for numpy.random.seed()')
     args = vars(parser.parse_args())
     main(args)
 
