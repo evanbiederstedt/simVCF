@@ -63,6 +63,8 @@ def read_variant_inputs(variants_csv, annotation_file):
         warnings.warn("Warning: DEL:ME denotes a deletion of mobile element relative to the reference. This needs to be implemented by the user.")
     if set(['INS:ME']).issubset(variants['variant_type']):
         warnings.warn("Warning: INS:ME denotes an insertion of mobile element relative to the reference. This needs to be implemented by the user.")
+    if set(['DUP']).issubset(variants['variant_type']):
+        warnings.warn("Warning: DUP is implemented as an insertion of a nearby sequence of length=length.")
 
     ## if "position" exists, fill NA in "length" with 1
     if 'position' in variants.columns:
@@ -78,10 +80,10 @@ def read_variant_inputs(variants_csv, annotation_file):
     if ((variants['variant_type'] == 'INS') or (variants['variant_type'] == 'DEL')).any():
     	if 'length' not in variants:
     		raise ValueError('Input variant *csv is formatted incorrectly. Mandatory `length` column must be included for INS and DEL. See README for formatting requirements.')
-    ## assume only SNP for now	
-    ## this appears unnecessary    
+  
     ## if 'length' in variants.columns:
     ##    variants['end'] = variants['position']
+
     ### Adopt consistent name convention
     if 'gene' in variants.columns:
         variants = variants.rename(columns={'gene': 'gene_name'})   ## or re-write the annotation convention for 'gene' instead of 'gene_name'
@@ -152,23 +154,41 @@ def write_vcf(ref_alt_dict, outputVCF):
 
 def main(args):
     ## read in annotation of variants
-    if args['annotation']=='GENCODE':
-        annotation_gencode = pd.read_csv('../data/GENCODE_annotation_unique_gene_names.csv')
-        vars = read_variant_inputs(args['input_variants'], annotation_gencode)
-    elif args['annotation']=='Ensembl':
-        annotation_ensembl = pd.read_csv('../data/ENSEMBL_Homo_sapiens.GRCh37.75_unique_gene_names.csv')
-        vars = read_variant_inputs(args['input_variants'], annotation_ensembl)
+    if args['reference']=='hg19' or args['reference']=='GRCh37':
+        if args['annotation']=='GENCODE':
+            annotation_gencode = pd.read_csv('../data/GENCODE_hg19_annotation_unique_gene_names.csv')
+            vars = read_variant_inputs(args['input_variants'], annotation_gencode)
+        elif args['annotation']=='Ensembl':
+            annotation_ensembl = pd.read_csv('../data/ENSEMBL_Homo_sapiens.GRCh37.75_unique_gene_names.csv')
+            vars = read_variant_inputs(args['input_variants'], annotation_ensembl)
+        else:
+            raise NotImplementedError('Error: "annotation" invalid. Only GENCODE and Ensembl annotations implemented.') 
+    elif args['reference']=='hg38' or args['reference']=='GRCh38':
+        if args['annotation']=='GENCODE':
+            annotation_gencode = pd.read_csv('../data/GENCODE_annotation_unique_gene_names.csv')
+            vars = read_variant_inputs(args['input_variants'], annotation_gencode)
+        elif args['annotation']=='Ensembl':
+            annotation_ensembl = pd.read_csv('../data/ENSEMBL_Homo_sapiens.GRCh37.75_unique_gene_names.csv')
+            vars = read_variant_inputs(args['input_variants'], annotation_ensembl)
+        else:
+            raise NotImplementedError('Error: "annotation" invalid. Only GENCODE and Ensembl annotations implemented.') 
     else:
-        raise NotImplementedError('Only GENCODE and Ensembl annotations implemented.') 
+        raise NotImplementedError('Error: "reference" invalid. Only implemented with human genome reference hg19/GRCh37 or hg38/GRCh38.') 
     ref_alts = create_ref_alt_dict(vars, args['input_fasta'])
     write_vcf(ref_alts, args['output_vcf'])
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Simulate VCF of somatic variants')
+    parser.add_argument('-r','--reference', 
+                        choices=['hg19', 'GRCh37', 'hg38', 'GRCh38'], 
+                        type=str.lower,
+                        default='hg19',
+                        help='reference assembly; default hg19')
     parser.add_argument('-a','--annotation', 
                         choices=['GENCODE', 'Ensembl'], 
                         type=str.lower,
+                        default='GENCODE',
                         help='annotation flag corresonding to input_fasta')
     parser.add_argument('-i','--input_fasta', 
                         default='../data/subsampled_hg38.fa',
