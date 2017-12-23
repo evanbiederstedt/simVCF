@@ -10,12 +10,12 @@ from collections import defaultdict
 from Bio import SeqIO
 
 
-def retrieve_variant_positions(column):
-    """Retrieve 'number' positions between 'start' and 'end' """
+def retrieve_snp_positions(column):
+    """For SNPs, retrieve 'number' positions between 'start' and 'end' """
     if int(column.number <= abs(int(column.end + 1) - int(column.start)):
         choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
     else:
-        raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them.')
+        raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them. Check input *csv columns "number", "length" or "position" ')
 
     return choice
 
@@ -84,8 +84,7 @@ def read_variant_inputs(variants_csv, annotation_file):
         else:
             variants['length'].fillna(1, inplace=True)
     ## end = position if variant == SNP, else end = start + length
-    variants['end'] = np.where(variants['variant_type']=='SNP', df['position'], df['start']+df['length'])
-
+    variants['end'] = np.where(variants['variant_type']=='SNP', df['position'], df['start'] + df['length'])
     ### Adopt consistent name convention
     if 'gene' in variants.columns:
         variants = variants.rename(columns={'gene': 'gene_name'})   ## or re-write the annotation convention for 'gene' instead of 'gene_name'
@@ -97,7 +96,7 @@ def read_variant_inputs(variants_csv, annotation_file):
     if 'gene_name' in variants.columns:
         match = variants.merge(annotation, on='gene_name', how='left')
         ## randomly get N positions between (start, end)
-        match['new_variant_positions'] = match.apply(retrieve_variant_positions, axis=1)
+        match['new_variant_positions'] = match.query('variant_type == "SNP"').apply(retrieve_snp_positions, axis=1)
         ## convert df to dictionary
         variants_dict = match.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
     else:
