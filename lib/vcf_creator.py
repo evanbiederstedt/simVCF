@@ -10,14 +10,6 @@ from collections import defaultdict
 from Bio import SeqIO
 
 
-def retrieve_snp_positions(column):
-    """For SNPs, retrieve 'number' positions between 'start' and 'end' """
-    if int(column.number <= abs(int(column.end + 1) - int(column.start)):
-        choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
-    else:
-        raise ValueError('Input variant *csv is formatted incorrectly. Number of variants exceeds area to place them. Check input *csv columns "number", "length" or "position" ')
-
-    return choice
 
 
 def read_fasta(input_fasta):
@@ -38,6 +30,22 @@ def get_reference_bases(my_list):
     
     new_list = [random.choice(legend[base]) for base in my_list]
     return new_list[0]
+
+def retrieve_snp_positions(column):
+    """For SNPs, retrieve 'number' positions between 'start' and 'end' """
+    if int(column.number <= abs(int(column.end + 1) - int(column.start)):
+        choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist() 
+    else:
+        raise ValueError('Input variant *csv is formatted incorrectly. Number of SNPs exceeds area to place them. Check input *csv columns "number", "length" or "position" ')
+
+    return choice
+
+def retrieve_del_positions(column):
+    """For DELs, retrieve bases from reference length 'length', /times 'number' """
+    ## retrieve random starts
+    ## check these are place within 'length'+1
+    choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist()
+
 
 
 def read_variant_inputs(variants_csv, annotation_file):
@@ -96,16 +104,53 @@ def read_variant_inputs(variants_csv, annotation_file):
     if 'gene_name' in variants.columns:
         match = variants.merge(annotation, on='gene_name', how='left')
         ## randomly get N positions between (start, end)
-        match['new_variant_positions'] = match.query('variant_type == "SNP"').apply(retrieve_snp_positions, axis=1)
+        #CODE     match['new_variant_positions'] = match.query('variant_type == "SNP"').apply(retrieve_snp_positions, axis=1)
         ## convert df to dictionary
-        variants_dict = match.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
+        #CODE     variants_dict = match.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
     else:
     	match = variants  ## if user didn't provide gene_names, the annotation isn't useful/needed
     	### must convert to variant dictionary
     	### every `chr` must become the key, and every position a value in the key
-    	variants_dict = match.groupby('start').agg(lambda x: x.values.tolist()).T
+    	#CODE     variants_dict = match.groupby('start').agg(lambda x: x.values.tolist()).T
+    return match
 
-    return variants_dict
+
+def generate_snps_dict(match_df):
+    """Generate SNPs from match DataFrame, output variants_dict"""
+    match_df['new_variant_positions'] = match_df.query('variant_type == "SNP"').apply(retrieve_snp_positions, axis=1)
+    snps_only = match_df[match_df.variant_type == 'SNP']
+    if 'gene_name' in snps_only.columns:
+        variants_dict = snps_only.groupby('seqname')['new_variant_positions'].apply(sum).to_dict()
+    else:
+        variants_dict = match_df.groupby('start').agg(lambda x: x.values.tolist()).T
+    return variants_dicts
+
+def generate_del_dict(match_df):
+    """Generate DELs from match DataFrame, output variants_dict"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def create_ref_alt_dict(var_dict, reference):
