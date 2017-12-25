@@ -10,8 +10,6 @@ from collections import defaultdict
 from Bio import SeqIO
 
 
-
-
 def read_fasta(input_fasta):
     """ Read in human genome reference FASTA"""
     genome = {}
@@ -42,9 +40,20 @@ def retrieve_snp_positions(column):
 
 def retrieve_del_positions(column):
     """For DELs, retrieve bases from reference length 'length', /times 'number' """
-    ## retrieve random starts
-    ## check these are place within 'length'+1
-    choice = np.random.choice(np.arange(column.start, column.end+1), column.number).tolist()
+    ## retrieve random starts, such that these ared placed within 'length'+1
+    arr = column.end - column.start - (column.number - 1) * column.length
+    if arr <= 0:
+         raise ValueError('Input variant *csv is formatted incorrectly. Deletions cannot fit in the interval (start, end). Either "number" &/or "length" are too large, or the interval too short.')
+    elif arr > column.number:
+        raise ValueError('Input variant *csv is formatted incorrectly. There are too many deletions requested within the interval (start, end). Either "number" &/or "length" are too large, or the interval too short.')
+    choice = np.random.choice(column.end - column.start - (column.number - 1) * column.length, column.number, replace=False) ## draw N==number amount of unique choices
+    idx = np.argsort(choice)  ## return indices that sort the above
+    ## now add the "spacing" from 'length' after the draws, to make sure deletions do not clash with each other
+    choice[idx] += np.arange(column.start, column.start + column.length * column.number, column.length)
+    return choice
+  
+
+
 
 
 
@@ -81,7 +90,9 @@ def read_variant_inputs(variants_csv, annotation_file):
             variants['length'] = 1
         else:
     	    variants['length'].fillna(1, inplace=True)
+    
 
+   
     if variants['position'].max() > 2.49e8:
         raise ValueError('Input variant *csv is formatted incorrectly. Value in `position` column greater than 2.49e8 bp, longer than the largest chromosome in the human reference. See README for formatting requirements.')
 
